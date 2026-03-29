@@ -1,0 +1,76 @@
+{
+  "expo": {
+    "name": "KaamWala",
+    "slug": "kaamwala",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FF6B35"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.kaamwala.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Used to capture profile and document photos",
+        "NSPhotoLibraryUsageDescription": "Used to upload profile and document photos",
+        "NSLocationWhenInUseUsageDescription": "Used to show your location on the map when selecting a service address",
+        "NSLocationAlwaysUsageDescription": "Used to show your location on the map when selecting a service address"
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FF6B35"
+      },
+      "package": "com.kaamwala.app",
+      "softwareKeyboardLayoutMode": "adjustResize",
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#FF6B35"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow KaamWala to access your photos for profile and documents."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow KaamWala to access your location to help you select a service address."
+        }
+      ]
+    ],
+    "extra": {
+      "firebase": {
+        "apiKey":            "AIzaSyDZCp2SPe6ASyS4QJbA_XYQtR1hK_5MXjk",
+        "authDomain":        "job-worker-3fa01.firebaseapp.com",
+        "projectId":         "job-worker-3fa01",
+        "storageBucket":     "job-worker-3fa01.firebasestorage.app",
+        "messagingSenderId": "325881977196",
+        "appId":             "1:325881977196:android:9955c8ee89c25efdee3b49"
+      }
+    }
+  }
+}

@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Job Worker — ER & Sequence Diagrams</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; padding: 32px; }
+    h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; color: #f8fafc; }
+    .subtitle { color: #94a3b8; margin-bottom: 40px; font-size: 14px; }
+    h2 { font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #38bdf8; border-left: 4px solid #38bdf8; padding-left: 12px; }
+    .section { margin-bottom: 56px; }
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 24px;
+      overflow-x: auto;
+    }
+    .mermaid { min-width: 600px; }
+    .note {
+      background: #1e3a5f;
+      border-left: 4px solid #3b82f6;
+      padding: 12px 16px;
+      border-radius: 0 8px 8px 0;
+      margin-bottom: 16px;
+      font-size: 13px;
+      color: #bfdbfe;
+      line-height: 1.6;
+    }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    @media (max-width: 1200px) { .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <h1>Job Worker Marketplace</h1>
+  <p class="subtitle">Entity-Relationship Diagram &amp; Sequence Diagrams — auto-generated from source analysis</p>
+
+  <!-- ER DIAGRAM -->
+  <div class="section">
+    <h2>Entity-Relationship Diagram</h2>
+    <div class="note">
+      Shows all 8 database tables, their columns (PK/FK/type), and cardinality relationships as derived from JPA entity classes.
+    </div>
+    <div class="card">
+      <div class="mermaid">
+erDiagram
+    users {
+        UUID id PK
+        VARCHAR phone UK
+        VARCHAR name
+        VARCHAR email UK
+        VARCHAR profile_photo
+        VARCHAR role
+        BOOLEAN is_active
+        VARCHAR fcm_token
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+    }
+
+    worker_profiles {
+        UUID id PK
+        UUID user_id FK
+        UUID category_id FK
+        TEXT bio
+        INT years_experience
+        DECIMAL hourly_rate
+        DECIMAL daily_rate
+        VARCHAR city
+        VARCHAR locality
+        DECIMAL latitude
+        DECIMAL longitude
+        BOOLEAN is_available
+        VARCHAR verification_status
+        DECIMAL avg_rating
+        INT total_jobs
+        BOOLEAN aadhaar_verified
+        BOOLEAN face_verified
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+    }
+
+    categories {
+        UUID id PK
+        VARCHAR name
+        VARCHAR name_hindi
+        VARCHAR icon_url
+        BOOLEAN is_active
+        INT sort_order
+    }
+
+    worker_categories {
+        UUID worker_id PK_FK
+        UUID category_id PK_FK
+        INT years_experience
+    }
+
+    bookings {
+        UUID id PK
+        UUID customer_id FK
+        UUID worker_id FK
+        UUID category_id FK
+        VARCHAR status
+        TEXT description
+        TEXT address
+        DECIMAL latitude
+        DECIMAL longitude
+        TIMESTAMP scheduled_at
+        TIMESTAMP confirmed_at
+        TIMESTAMP started_at
+        TIMESTAMP completed_at
+        TIMESTAMP cancelled_at
+        VARCHAR cancellation_reason
+        VARCHAR cancelled_by
+        DECIMAL quoted_amount
+        DECIMAL final_amount
+        VARCHAR payment_status
+        VARCHAR otp_code_hash
+        VARCHAR otp_code
+        VARCHAR idempotency_key UK
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+    }
+
+    reviews {
+        UUID id PK
+        UUID booking_id FK_UK
+        UUID reviewer_id FK
+        UUID worker_id FK
+        INT rating
+        TEXT comment
+        TIMESTAMP created_at
+    }
+
+    earnings {
+        UUID id PK
+        UUID worker_id FK
+        UUID booking_id FK_UK
+        DECIMAL gross_amount
+        DECIMAL platform_fee
+        DECIMAL net_amount
+        VARCHAR status
+        TIMESTAMP settled_at
+        TIMESTAMP created_at
+    }
+
+    notifications {
+        UUID id PK
+        UUID user_id FK
+        VARCHAR title
+        TEXT body
+        VARCHAR type
+        UUID ref_id
+        BOOLEAN is_read
+        TIMESTAMP created_at
+    }
+
+    users ||--o| worker_profiles : "has profile (WORKER role)"
+    worker_profiles }o--|| categories : "primary category"
+    worker_profiles ||--o{ worker_categories : "offers skills in"
+    categories ||--o{ worker_categories : "selected by workers"
+    users ||--o{ bookings : "places (customer)"
+    worker_profiles ||--o{ bookings : "receives"
+    categories ||--o{ bookings : "service type"
+    bookings ||--o| reviews : "reviewed via"
+    users ||--o{ reviews : "writes"
+    worker_profiles ||--o{ reviews : "receives"
+    bookings ||--o| earnings : "generates"
+    worker_profiles ||--o{ earnings : "credited to"
+    users ||--o{ notifications : "receives"
+      </div>
+    </div>
+  </div>
+
+  <!-- SEQUENCE DIAGRAMS -->
+  <div class="section">
+    <h2>Sequence Diagram 1 — Authentication (Firebase OTP → JWT)</h2>
+    <div class="note">
+      User sends phone → Firebase sends OTP → App verifies with Firebase → Backend upserts User record → issues Access + Refresh JWT tokens. New WORKER users get a WorkerProfile stub created automatically.
+    </div>
+    <div class="card">
+      <div class="mermaid">
+sequenceDiagram
+    actor User
+    participant App as Mobile App
+    participant Firebase
+    participant Auth as AuthController
+    participant DB as Database
+
+    User->>App: Enter phone number
+    App->>Firebase: sendOTP(phone)
+    Firebase-->>User: SMS OTP (6-digit)
+    User->>App: Enter OTP
+    App->>Firebase: signInWithPhoneNumber(otp)
+    Firebase-->>App: firebaseIdToken (JWT)
+
+    App->>Auth: POST /api/auth/verify-otp<br/>{firebaseIdToken, phone, role}
+    Auth->>Firebase: verifyToken(firebaseIdToken)
+    Firebase-->>Auth: decoded phone number
+
+    alt phone mismatch
+        Auth-->>App: 401 Unauthorized
+    end
+
+    Auth->>DB: findByPhone(phone)
+    alt new user
+        DB-->>Auth: empty
+        Auth->>DB: INSERT users (phone, role)
+        DB-->>Auth: User record
+        alt role = WORKER
+            Auth->>DB: INSERT worker_profiles (user_id)
+        end
+    else existing user
+        DB-->>Auth: User record
+        Auth->>DB: UPDATE role (if changed)
+    end
+
+    Auth->>Auth: generateAccessToken(userId, role)
+    Auth->>Auth: generateRefreshToken(userId, role)
+    Auth-->>App: {accessToken, refreshToken, userInfo}
+    App->>App: Store tokens (SecureStore)
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Sequence Diagram 2 — Worker Onboarding &amp; Verification</h2>
+    <div class="note">
+      After login, the WORKER fills profile in 5 steps, uploads Aadhaar + face docs, and waits for admin verification before becoming bookable.
+    </div>
+    <div class="card">
+      <div class="mermaid">
+sequenceDiagram
+    actor Worker
+    participant App as Worker App
+    participant WorkerCtrl as WorkerController
+    participant Storage as S3 / Cloudinary
+    participant VerifyCtrl as VerificationController
+    participant DB as Database
+
+    Worker->>App: Complete onboarding steps 1-5<br/>(personal info, skills, location, rates, documents)
+    App->>Storage: upload(aadhaarDoc, facePhoto)
+    Storage-->>App: documentUrls
+
+    App->>WorkerCtrl: PUT /api/workers/profile<br/>{bio, categories, rates, location, ...}
+    WorkerCtrl->>DB: UPDATE worker_profiles
+    DB-->>WorkerCtrl: updated WorkerProfile
+    WorkerCtrl-->>App: WorkerProfileDTO
+
+    App->>VerifyCtrl: POST /api/verification/submit<br/>{aadhaarUrl, facePhotoUrl}
+    VerifyCtrl->>DB: UPDATE worker_profiles<br/>SET verification_status = UNDER_REVIEW
+    DB-->>VerifyCtrl: OK
+
+    Note over VerifyCtrl,DB: Admin reviews documents (out-of-band)
+
+    VerifyCtrl->>DB: UPDATE worker_profiles<br/>SET verification_status = VERIFIED<br/>    aadhaar_verified = true<br/>    face_verified = true
+    DB-->>VerifyCtrl: OK
+    VerifyCtrl->>DB: INSERT notifications (worker, "Profile Verified")
+    Worker-->>App: Push notification: "You are now verified"
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Sequence Diagram 3 — Booking Lifecycle (Full Happy Path)</h2>
+    <div class="note">
+      Complete booking flow from customer browsing workers → booking creation with OTP → worker confirms → customer shares OTP to start → job completes → earning settled → customer leaves a review.
+    </div>
+    <div class="card">
+      <div class="mermaid">
+sequenceDiagram
+    actor Customer
+    actor Worker
+    participant CApp as Customer App
+    participant WApp as Worker App
+    participant BookCtrl as BookingController
+    participant BookSvc as BookingService
+    participant NotifSvc as NotificationService
+    participant FCM as Firebase FCM
+    participant DB as Database
+
+    Customer->>CApp: Browse workers by category + location
+    CApp->>BookCtrl: GET /api/workers?category=&city=
+    BookCtrl->>DB: SELECT worker_profiles WHERE verified & available
+    DB-->>BookCtrl: Worker list
+    BookCtrl-->>CApp: WorkerListDTO[]
+
+    Customer->>CApp: Select worker, pick date/time, submit booking
+    CApp->>BookCtrl: POST /api/bookings<br/>{workerId, categoryId, scheduledAt,<br/> address, lat, lng, quotedAmount,<br/> idempotencyKey}
+
+    BookCtrl->>BookSvc: createBooking(customerId, request)
+    BookSvc->>DB: Check idempotency key
+    BookSvc->>DB: Check worker verified & available
+    BookSvc->>DB: Check conflict window ±2h
+    BookSvc->>BookSvc: generateOTP() → hash(OTP)
+    BookSvc->>DB: INSERT bookings<br/>(status=PENDING, otp_code_hash, otp_code)
+    DB-->>BookSvc: Booking record
+
+    BookSvc->>NotifSvc: sendBookingRequest(booking)
+    NotifSvc->>FCM: send push to worker.fcmToken
+    FCM-->>WApp: Push: "New booking request"
+
+    BookCtrl-->>CApp: BookingResponseDTO + plain OTP
+    Note over CApp: Customer stores OTP to share at job start
+
+    Worker->>WApp: View booking request
+    WApp->>BookCtrl: GET /api/bookings/{id}
+    BookCtrl-->>WApp: Booking details
+
+    Worker->>WApp: Accept booking
+    WApp->>BookCtrl: POST /api/bookings/{id}/confirm
+    BookCtrl->>BookSvc: confirmBooking(workerId, bookingId)
+    BookSvc->>DB: UPDATE bookings SET status=CONFIRMED, confirmed_at=now()
+    BookSvc->>NotifSvc: sendBookingConfirmed(booking)
+    NotifSvc->>FCM: push to customer.fcmToken
+    FCM-->>CApp: Push: "Booking confirmed!"
+
+    Note over Customer,Worker: Worker arrives at customer location
+
+    Customer->>Worker: Share 6-digit OTP verbally
+    Worker->>WApp: Enter OTP to start job
+    WApp->>BookCtrl: POST /api/bookings/{id}/start {otpCode}
+    BookCtrl->>BookSvc: startBooking(workerId, bookingId, otp)
+    BookSvc->>BookSvc: hash(otp) == otp_code_hash ?
+    alt Invalid OTP
+        BookSvc-->>WApp: 422 Invalid OTP
+    end
+    BookSvc->>DB: UPDATE bookings<br/>SET status=IN_PROGRESS,<br/>    started_at=now(),<br/>    otp_code=null, otp_code_hash=null
+    BookSvc->>NotifSvc: sendBookingStarted(booking)
+    NotifSvc->>FCM: push to customer
+    FCM-->>CApp: Push: "Job started"
+
+    Note over Customer,Worker: Work is performed
+
+    Worker->>WApp: Mark job complete
+    WApp->>BookCtrl: POST /api/bookings/{id}/complete
+    BookCtrl->>BookSvc: completeBooking(workerId, bookingId)
+    BookSvc->>DB: UPDATE bookings<br/>SET status=COMPLETED,<br/>    completed_at=now(), final_amount=resolved
+    BookSvc->>DB: INSERT earnings<br/>(gross, platformFee=0, net, status=SETTLED)
+    BookSvc->>DB: UPDATE worker_profiles SET total_jobs += 1
+    BookSvc->>NotifSvc: sendBookingCompleted(booking)
+    NotifSvc->>FCM: push to customer
+    FCM-->>CApp: Push: "Job completed! Leave a review"
+
+    Customer->>CApp: Submit review (rating + comment)
+    CApp->>BookCtrl: POST /api/reviews<br/>{bookingId, rating, comment}
+    BookCtrl->>DB: INSERT reviews
+    BookCtrl->>DB: UPDATE worker_profiles<br/>SET avg_rating = recalculated
+    BookCtrl-->>CApp: ReviewDTO
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Sequence Diagram 4 — Booking Cancellation</h2>
+    <div class="note">
+      Either Customer or Worker can cancel a booking while it is in PENDING or CONFIRMED status. Cancellation from IN_PROGRESS is blocked.
+    </div>
+    <div class="card">
+      <div class="mermaid">
+sequenceDiagram
+    actor Initiator as Customer / Worker
+    participant App as Mobile App
+    participant BookCtrl as BookingController
+    participant BookSvc as BookingService
+    participant NotifSvc as NotificationService
+    participant FCM as Firebase FCM
+    participant DB as Database
+
+    Initiator->>App: Cancel booking (provide reason)
+    App->>BookCtrl: DELETE /api/bookings/{id}<br/>{reason}
+
+    BookCtrl->>BookSvc: cancelBooking(userId, bookingId, role, request)
+    BookSvc->>DB: findById(bookingId)
+    DB-->>BookSvc: Booking
+
+    alt Booking not owned by requester
+        BookSvc-->>App: 403 Forbidden
+    end
+
+    alt Status is IN_PROGRESS or COMPLETED
+        BookSvc-->>App: 400 Cannot cancel
+    end
+
+    BookSvc->>DB: UPDATE bookings<br/>SET status=CANCELLED,<br/>    cancelled_at=now(),<br/>    cancelled_by=role,<br/>    cancellation_reason=reason,<br/>    otp_code=null, otp_code_hash=null
+
+    BookSvc->>NotifSvc: sendBookingCancelled(booking)
+    NotifSvc->>FCM: push to the other party
+    FCM-->>App: Push: "Booking cancelled"
+    BookCtrl-->>App: BookingResponseDTO (status=CANCELLED)
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Booking Status State Machine</h2>
+    <div class="note">
+      All valid status transitions in the system. OTP verification is the gate between CONFIRMED and IN_PROGRESS.
+    </div>
+    <div class="card">
+      <div class="mermaid">
+stateDiagram-v2
+    [*] --> PENDING : Customer creates booking<br/>(OTP generated)
+
+    PENDING --> CONFIRMED : Worker accepts
+    PENDING --> CANCELLED : Customer or Worker cancels<br/>or System expires (scheduler)
+
+    CONFIRMED --> IN_PROGRESS : Worker enters valid OTP<br/>from customer
+    CONFIRMED --> CANCELLED : Customer or Worker cancels
+
+    IN_PROGRESS --> COMPLETED : Worker marks complete<br/>(Earning record created)
+
+    COMPLETED --> [*]
+    CANCELLED --> [*]
+      </div>
+    </div>
+  </div>
+
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'dark',
+      themeVariables: {
+        primaryColor: '#1e40af',
+        primaryTextColor: '#e2e8f0',
+        primaryBorderColor: '#3b82f6',
+        lineColor: '#64748b',
+        secondaryColor: '#1e293b',
+        tertiaryColor: '#0f172a',
+        background: '#0f172a',
+        mainBkg: '#1e293b',
+        nodeBorder: '#3b82f6',
+        clusterBkg: '#0f172a',
+        titleColor: '#f8fafc',
+        edgeLabelBackground: '#1e293b',
+        actorBkg: '#1e3a5f',
+        actorBorder: '#3b82f6',
+        actorTextColor: '#e2e8f0',
+        actorLineColor: '#64748b',
+        signalColor: '#94a3b8',
+        signalTextColor: '#e2e8f0',
+        labelBoxBkgColor: '#1e3a5f',
+        labelBoxBorderColor: '#3b82f6',
+        labelTextColor: '#e2e8f0',
+        loopTextColor: '#e2e8f0',
+        noteBorderColor: '#f59e0b',
+        noteBkgColor: '#1c1917',
+        noteTextColor: '#fef3c7',
+        activationBorderColor: '#38bdf8',
+        activationBkgColor: '#1e3a5f'
+      },
+      er: {
+        useMaxWidth: true,
+        layoutDirection: 'TB'
+      },
+      sequence: {
+        useMaxWidth: true,
+        showSequenceNumbers: false,
+        actorMargin: 60,
+        messageMargin: 30
+      }
+    });
+  </script>
+</body>
+</html>
