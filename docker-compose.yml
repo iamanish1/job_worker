@@ -24,7 +24,7 @@ services:
       dockerfile: Dockerfile
     container_name: jobworker-api
     ports:
-      - "8080:8080"
+      - "8081:8080"
     environment:
       SPRING_PROFILES_ACTIVE: dev
       DB_URL:  jdbc:postgresql://postgres:5432/jobworker
@@ -37,6 +37,9 @@ services:
       AWS_ACCESS_KEY:         ${AWS_ACCESS_KEY:-}
       AWS_SECRET_KEY:         ${AWS_SECRET_KEY:-}
       FIREBASE_CREDENTIALS_PATH: firebase-service-account.json
+      VERIFICATION_PROVIDER:  ${VERIFICATION_PROVIDER:-sandbox}
+      SUREPASS_BASE_URL:      ${SUREPASS_BASE_URL:-https://kyc-api.surepass.io}
+      SUREPASS_TOKEN:         ${SUREPASS_TOKEN:-}
     depends_on:
       postgres:
         condition: service_healthy

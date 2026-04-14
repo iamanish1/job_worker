@@ -36,10 +36,10 @@ export const workerApi = {
       '/verify/aadhaar/send-otp', { aadhaarNumber }),
 
   verifyAadhaarOtp: (clientId: string, otp: string) =>
-    apiClient.post<{ data: { verified: boolean } }>(
+    apiClient.post<{ data: { aadhaarVerified: boolean } }>(
       '/verify/aadhaar/verify-otp', { clientId, otp }),
 
   matchFace: (selfieBase64: string) =>
-    apiClient.post<{ data: { matched: boolean; confidence: number } }>(
+    apiClient.post<{ data: { faceVerified: boolean } }>(
       '/verify/face', { selfieBase64 }),
 };

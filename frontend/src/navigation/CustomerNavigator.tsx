@@ -8,11 +8,15 @@ import BookingScreen           from '../screens/customer/BookingScreen';
 import BookingTrackingScreen   from '../screens/customer/BookingTrackingScreen';
 import CustomerProfileScreen   from '../screens/customer/CustomerProfileScreen';
 import MyBookingsScreen        from '../screens/customer/MyBookingsScreen';
+import MyReviewsScreen        from '../screens/customer/MyReviewsScreen';
+import HelpFaqScreen          from '../screens/customer/HelpFaqScreen';
 
 export type CustomerStackParams = {
   CustomerHome:     undefined;
   CustomerProfile:  undefined;
   MyBookings:       undefined;
+  MyReviews:        undefined;
+  HelpFaq:          undefined;
   WorkerListing:    { categoryId?: string; categoryName?: string; city?: string };
   WorkerProfile:    { workerId: string };
   Booking:          { workerId: string; categoryId: string; categoryName: string };
@@ -43,6 +47,10 @@ export default function CustomerNavigator() {
         options={{ title: 'Book Service' }} />
       <Stack.Screen name="BookingTracking" component={BookingTrackingScreen}
         options={{ title: 'Track Booking' }} />
+      <Stack.Screen name="MyReviews" component={MyReviewsScreen}
+        options={{ title: 'My Reviews' }} />
+      <Stack.Screen name="HelpFaq" component={HelpFaqScreen}
+        options={{ title: 'Help & FAQ' }} />
     </Stack.Navigator>
   );
 }

@@ -1,0 +1,42 @@
+## Production overrides — loaded when SPRING_PROFILES_ACTIVE=prod
+## All secrets come from environment variables injected by Railway.
+## NEVER put real values in this file.
+
+spring:
+  jpa:
+    show-sql: false
+    properties:
+      hibernate:
+        # Connection pool tuned for Railway starter plan (1 vCPU, 512 MB)
+        hikari:
+          maximum-pool-size: 5
+          minimum-idle: 1
+
+  # Disable detailed error messages in HTTP responses
+  mvc:
+    throw-exception-if-no-handler-found: true
+
+server:
+  # Disable embedded error page details
+  error:
+    include-message: never
+    include-binding-errors: never
+    include-stacktrace: never
+    include-exception: false
+
+# Real Surepass KYC (not sandbox)
+verification:
+  provider: surepass
+
+# CORS: only your production domain
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS}
+
+logging:
+  level:
+    com.marketplace: INFO
+    org.springframework.security: WARN
+    org.hibernate: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

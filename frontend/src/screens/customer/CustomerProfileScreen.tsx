@@ -110,7 +110,7 @@ export default function CustomerProfileScreen() {
             hint="View all your bookings" onPress={() => navigation.navigate('MyBookings')} />
           <ActionRow icon="star-outline" iconBg="#FEF9C3" iconColor="#CA8A04" label="My Reviews"
             hint="Reviews you've given"
-            onPress={() => Alert.alert('Coming Soon', 'Reviews feature will be available soon.')} last />
+            onPress={() => navigation.navigate('MyReviews')} last />
         </View>
 
         {/* Help & Support */}
@@ -118,7 +118,7 @@ export default function CustomerProfileScreen() {
           <Text style={styles.cardTitle}>Support</Text>
           <ActionRow icon="help-circle-outline" iconBg="#F0FDF4" iconColor="#16A34A" label="Help & FAQ"
             hint="Get help with the app"
-            onPress={() => Alert.alert('Help & FAQ', 'For support, contact us at support@kaamwala.in or call +91-1800-XXX-XXXX.')} />
+            onPress={() => navigation.navigate('HelpFaq')} />
           <ActionRow icon="shield-outline" iconBg="#FFF7ED" iconColor="#EA580C" label="Privacy Policy"
             hint="How we protect your data"
             onPress={() => Alert.alert('Privacy Policy', 'Your data is encrypted and never shared with third parties. KYC documents are only used for worker verification.')} last />

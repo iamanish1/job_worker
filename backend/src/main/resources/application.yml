@@ -56,10 +56,19 @@ app:
   booking:
     expiry-minutes: 30
 
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:8081,exp://localhost:8081,http://localhost:19006}
+
 verification:
-  # Options: sandbox (mock) | surepass (production)
-  # In sandbox mode OTP is always "123456" and face match always succeeds.
-  provider: sandbox
+  # Options: sandbox (mock) | surepass (real KYC)
+  # sandbox: OTP is always "123456", face match always succeeds.
+  # surepass: calls Surepass KYC API with real Aadhaar + face biometrics.
+  provider: ${VERIFICATION_PROVIDER:sandbox}
+
+surepass:
+  api:
+    base-url: ${SUREPASS_BASE_URL:https://kyc-api.surepass.io}
+    token: ${SUREPASS_TOKEN:}
 
 logging:
   level:

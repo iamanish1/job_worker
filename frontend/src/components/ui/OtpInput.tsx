@@ -47,10 +47,10 @@ export default function OtpInput({ length, value, onChange }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginVertical: 20 },
+  container: { flexDirection: 'row', gap: 8, marginVertical: 20 },
   box:       {
-    width: 48, height: 56, borderWidth: 1.5, borderColor: Colors.border,
-    borderRadius: 10, textAlign: 'center', fontSize: 22, fontWeight: '700',
+    flex: 1, height: 52, borderWidth: 1.5, borderColor: Colors.border,
+    borderRadius: 10, textAlign: 'center', fontSize: 20, fontWeight: '700',
     color: Colors.textPrimary,
   },
   boxFilled: { borderColor: Colors.primary, backgroundColor: '#FFF3EE' },

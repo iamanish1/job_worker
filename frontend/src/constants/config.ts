@@ -1,7 +1,7 @@
 export const Config = {
   API_BASE_URL:   __DEV__
-    ? 'http://192.168.1.42:8080/api'   // Expo Go on physical device
-    : 'https://api.yourdomain.com/api',
+    ? 'http://192.168.1.13:8081/api'   // Expo Go on physical device
+    : 'https://api.jigara.in/api',     // Production (Railway)
   BOOKING_POLL_INTERVAL_MS: 30_000,   // 30s polling for tracking
   OTP_RESEND_COOLDOWN_S:    30,
   MAX_FILE_SIZE_MB:         10,

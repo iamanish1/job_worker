@@ -60,6 +60,24 @@ public class ReviewService {
     }
 
     @Transactional(readOnly = true)
+    public PageResponse<MyReviewDTO> getMyReviews(UUID customerId, int page, int size) {
+        return new PageResponse<>(
+            reviewRepository.findByReviewerIdOrderByCreatedAtDesc(
+                customerId, PageRequest.of(page, Math.min(size, 50)))
+            .map(r -> new MyReviewDTO(
+                r.getId(),
+                r.getBooking().getId(),
+                r.getWorker().getUser().getName(),
+                r.getWorker().getUser().getProfilePhoto(),
+                r.getBooking().getCategory().getName(),
+                r.getRating(),
+                r.getComment(),
+                r.getCreatedAt()
+            ))
+        );
+    }
+
+    @Transactional(readOnly = true)
     public PageResponse<ReviewDTO> getWorkerReviews(UUID workerId, int page, int size) {
         return new PageResponse<>(
             reviewRepository.findByWorkerIdOrderByCreatedAtDesc(
@@ -84,6 +102,17 @@ public class ReviewService {
             workerRepository.save(worker);
         });
     }
+
+    public record MyReviewDTO(
+        java.util.UUID id,
+        java.util.UUID bookingId,
+        String workerName,
+        String workerPhoto,
+        String categoryName,
+        Integer rating,
+        String comment,
+        java.time.Instant createdAt
+    ) {}
 
     public record ReviewDTO(
         java.util.UUID id,

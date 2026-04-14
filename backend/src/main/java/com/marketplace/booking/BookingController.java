@@ -12,7 +12,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -69,14 +68,9 @@ public class BookingController {
     public ResponseEntity<ApiResponse<BookingResponseDTO>> start(
             @AuthenticationPrincipal AuthenticatedUser principal,
             @PathVariable UUID bookingId,
-            @RequestBody Map<String, String> body) {
-        String otpCode = body.get("otpCode");
-        if (otpCode == null || otpCode.isBlank()) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("otpCode is required"));
-        }
+            @Valid @RequestBody StartBookingRequest request) {
         return ResponseEntity.ok(ApiResponse.ok(
-            bookingService.startBooking(principal.getUserId(), bookingId, otpCode)));
+            bookingService.startBooking(principal.getUserId(), bookingId, request.otpCode())));
     }
 
     /** Worker marks job as completed */

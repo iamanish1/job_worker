@@ -68,7 +68,11 @@ public class JwtService {
     }
 
     public String extractRole(String token) {
-        return (String) validateAndExtract(token).get("role");
+        Object role = validateAndExtract(token).get("role");
+        if (!(role instanceof String)) {
+            throw new BusinessException("Token missing role claim", HttpStatus.UNAUTHORIZED);
+        }
+        return (String) role;
     }
 
     public boolean isRefreshToken(String token) {

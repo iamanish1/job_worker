@@ -19,6 +19,8 @@ public interface ReviewRepository extends JpaRepository<Review, UUID> {
 
     long countByWorkerId(UUID workerId);
 
+    Page<Review> findByReviewerIdOrderByCreatedAtDesc(UUID reviewerId, Pageable pageable);
+
     @Query("SELECT AVG(r.rating) FROM Review r WHERE r.worker.id = :workerId")
     Optional<Double> findAvgRatingByWorkerId(@Param("workerId") UUID workerId);
 }

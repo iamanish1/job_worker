@@ -31,6 +31,16 @@ public class ReviewController {
                 .body(ApiResponse.ok("Review submitted", null));
     }
 
+    @GetMapping("/reviews/my")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public ResponseEntity<ApiResponse<PageResponse<ReviewService.MyReviewDTO>>> getMyReviews(
+            @AuthenticationPrincipal AuthenticatedUser principal,
+            @RequestParam(defaultValue = "0")  int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(ApiResponse.ok(
+            reviewService.getMyReviews(principal.getUserId(), page, size)));
+    }
+
     @GetMapping("/workers/{workerId}/reviews")
     public ResponseEntity<ApiResponse<PageResponse<ReviewService.ReviewDTO>>> getWorkerReviews(
             @PathVariable UUID workerId,

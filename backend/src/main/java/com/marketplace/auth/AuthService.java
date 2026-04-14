@@ -47,8 +47,12 @@ public class AuthService {
             return newUser;
         });
 
-        // Allow role switching — update the role if the user explicitly selects a different one
+        // Role switching: only allow CUSTOMER ↔ WORKER, never to ADMIN
         if (!isNewUser && !user.getRole().equals(request.role())) {
+            if ("ADMIN".equals(request.role())) {
+                log.warn("User {} attempted unauthorized escalation to ADMIN", phone);
+                throw new BusinessException("Role escalation not permitted", HttpStatus.FORBIDDEN);
+            }
             log.info("User {} switching role from {} to {}", phone, user.getRole(), request.role());
             user.setRole(request.role());
         }

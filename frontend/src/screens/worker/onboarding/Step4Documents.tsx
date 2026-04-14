@@ -16,7 +16,7 @@ interface Props {
   onBack:   () => void;
 }
 
-type Substate = 'enterNumber' | 'enterOtp' | 'takeSelfie' | 'done';
+type Substate = 'enterNumber' | 'enterOtp' | 'takeSelfie' | 'verifyingFace' | 'done';
 
 export default function Step4Documents({ onUpdate, onNext, onBack }: Props) {
   const [substate,      setSubstate]      = useState<Substate>('enterNumber');
@@ -25,78 +25,153 @@ export default function Step4Documents({ onUpdate, onNext, onBack }: Props) {
   const [otp,           setOtp]           = useState('');
   const [selfieUri,     setSelfieUri]     = useState('');
   const [loading,       setLoading]       = useState(false);
+  const [loadingMsg,    setLoadingMsg]    = useState('');
+  const [otpSentTo,     setOtpSentTo]     = useState(''); // last 4 digits for display
 
   const handleAadhaarChange = (val: string) => {
     setAadhaarNumber(val.replace(/[^0-9]/g, '').slice(0, 12));
   };
 
-  const maskedAadhaar = aadhaarNumber.length === 12
+  const maskedAadhaar = aadhaarNumber.length >= 8
     ? `XXXX-XXXX-${aadhaarNumber.slice(8)}`
     : aadhaarNumber;
 
-  // ── Step 1: Send OTP ────────────────────────────────────────
+  // ── Step 1: Send OTP ────────────────────────────────────────────────────────
   const handleSendOtp = async () => {
     if (aadhaarNumber.length !== 12) {
-      Alert.alert('Invalid', 'Please enter a valid 12-digit Aadhaar number');
+      Alert.alert('Invalid Aadhaar', 'Please enter a valid 12-digit Aadhaar number.');
       return;
     }
     setLoading(true);
+    setLoadingMsg('Sending OTP to your Aadhaar-linked mobile…');
     try {
       const res = await workerApi.sendAadhaarOtp(aadhaarNumber);
       setClientId(res.data.data.clientId);
+      setOtpSentTo(aadhaarNumber.slice(-4));
       setSubstate('enterOtp');
     } catch (e: any) {
-      Alert.alert('Error', e.response?.data?.message || 'Failed to send OTP. Please try again.');
-    } finally { setLoading(false); }
+      const msg = e.response?.data?.message;
+      if (msg) {
+        Alert.alert('OTP Failed', msg);
+      } else {
+        Alert.alert(
+          'OTP Failed',
+          'Could not send OTP. Please check your Aadhaar number and try again.',
+        );
+      }
+    } finally {
+      setLoading(false);
+      setLoadingMsg('');
+    }
   };
 
-  // ── Step 2: Verify OTP ──────────────────────────────────────
+  // ── Step 2: Verify OTP ──────────────────────────────────────────────────────
   const handleVerifyOtp = async () => {
     if (otp.length !== 6) {
-      Alert.alert('Invalid', 'Please enter the 6-digit OTP');
+      Alert.alert('Invalid OTP', 'Please enter the 6-digit OTP.');
       return;
     }
     setLoading(true);
+    setLoadingMsg('Verifying OTP…');
     try {
       await workerApi.verifyAadhaarOtp(clientId, otp);
       setSubstate('takeSelfie');
     } catch (e: any) {
-      Alert.alert('Error', e.response?.data?.message || 'Incorrect OTP. Please try again.');
-    } finally { setLoading(false); }
+      const msg = e.response?.data?.message;
+      Alert.alert(
+        'OTP Verification Failed',
+        msg || 'Incorrect or expired OTP. Please try again.',
+      );
+    } finally {
+      setLoading(false);
+      setLoadingMsg('');
+    }
   };
 
-  // ── Step 3: Capture selfie & verify face ────────────────────
+  const handleResendOtp = () => {
+    setOtp('');
+    setSubstate('enterNumber');
+  };
+
+  // ── Step 3: Capture selfie & verify face ────────────────────────────────────
   const handleCaptureSelfieAndVerify = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission needed', 'Please allow camera access for face verification.');
+      Alert.alert(
+        'Camera Permission Required',
+        'Please allow camera access in Settings to complete face verification.',
+      );
       return;
     }
+
     setLoading(true);
+    setLoadingMsg('Opening camera…');
+
     try {
       const result = await ImagePicker.launchCameraAsync({
         allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.7,
-        base64: true,
-        cameraType: ImagePicker.CameraType.front,
+        aspect:        [1, 1],
+        quality:       0.8,
+        base64:        true,
+        cameraType:    ImagePicker.CameraType.front,
       });
-      if (result.canceled || !result.assets?.[0]) { setLoading(false); return; }
-      const asset  = result.assets[0];
-      const base64 = asset.base64 || '';
+
+      if (result.canceled || !result.assets?.[0]) {
+        setLoading(false);
+        setLoadingMsg('');
+        return;
+      }
+
+      const asset = result.assets[0];
+      if (!asset.base64) {
+        Alert.alert('Error', 'Could not read image. Please try again.');
+        setLoading(false);
+        setLoadingMsg('');
+        return;
+      }
+
       setSelfieUri(asset.uri);
+      setSubstate('verifyingFace');
+      setLoadingMsg('Matching your face with Aadhaar…');
+
+      // Strip any data-URL prefix if present (expo usually returns raw base64)
+      const base64 = asset.base64.replace(/^data:image\/\w+;base64,/, '');
+
       await workerApi.matchFace(base64);
+
       onUpdate({ aadhaarVerified: true, faceVerified: true });
       setSubstate('done');
     } catch (e: any) {
-      Alert.alert('Error', e.response?.data?.message || 'Face verification failed. Please try again.');
-    } finally { setLoading(false); }
+      const msg = e.response?.data?.message;
+      setSelfieUri('');
+      setSubstate('takeSelfie');
+
+      if (msg?.toLowerCase().includes('does not match') || msg?.toLowerCase().includes('face')) {
+        Alert.alert(
+          'Face Mismatch',
+          'Your selfie did not match the Aadhaar photo.\n\nTips:\n• Use good lighting\n• Face the camera directly\n• Remove glasses or cap',
+          [{ text: 'Try Again' }],
+        );
+      } else {
+        Alert.alert(
+          'Face Verification Failed',
+          msg || 'Something went wrong. Please try again.',
+        );
+      }
+    } finally {
+      setLoading(false);
+      setLoadingMsg('');
+    }
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.inner} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.inner}
+      showsVerticalScrollIndicator={false}
+    >
 
-      {/* ── Enter Aadhaar number ─────────────────────────────── */}
+      {/* ── Enter Aadhaar number ─────────────────────────────────────────────── */}
       {substate === 'enterNumber' && (
         <>
           <View style={styles.iconHeader}>
@@ -105,7 +180,8 @@ export default function Step4Documents({ onUpdate, onNext, onBack }: Props) {
             </View>
             <Text style={styles.title}>Aadhaar Verification</Text>
             <Text style={styles.subtitle}>
-              Enter your 12-digit Aadhaar number. An OTP will be sent to your Aadhaar-linked mobile.
+              Enter your 12-digit Aadhaar number. A one-time password will be sent
+              to the mobile number linked with your Aadhaar.
             </Text>
           </View>
 
@@ -131,23 +207,31 @@ export default function Step4Documents({ onUpdate, onNext, onBack }: Props) {
             )}
           </View>
 
-          <View style={styles.sandboxBox}>
-            <Ionicons name="flask-outline" size={16} color="#7C3AED" />
-            <Text style={styles.sandboxText}>
-              Sandbox mode — any 12-digit number works. OTP will be <Text style={{ fontWeight: '800' }}>123456</Text>.
+          <View style={styles.infoBox}>
+            <Ionicons name="lock-closed-outline" size={16} color="#1D4ED8" />
+            <Text style={styles.infoText}>
+              Your Aadhaar data is used only for identity verification and is never stored on our servers.
             </Text>
           </View>
 
           <TouchableOpacity
             style={[styles.primaryBtn, (aadhaarNumber.length !== 12 || loading) && styles.btnDisabled]}
             disabled={aadhaarNumber.length !== 12 || loading}
-            onPress={handleSendOtp}>
+            onPress={handleSendOtp}
+          >
             {loading
-              ? <ActivityIndicator color={Colors.white} />
-              : <>
+              ? (
+                <View style={styles.loadingRow}>
+                  <ActivityIndicator color={Colors.white} />
+                  <Text style={styles.primaryBtnText}>{loadingMsg || 'Sending…'}</Text>
+                </View>
+              )
+              : (
+                <>
                   <Ionicons name="send" size={18} color={Colors.white} />
                   <Text style={styles.primaryBtnText}>Send OTP</Text>
-                </>}
+                </>
+              )}
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.backBtn} onPress={onBack}>
@@ -157,7 +241,7 @@ export default function Step4Documents({ onUpdate, onNext, onBack }: Props) {
         </>
       )}
 
-      {/* ── Enter OTP ───────────────────────────────────────── */}
+      {/* ── Enter OTP ─────────────────────────────────────────────────────────── */}
       {substate === 'enterOtp' && (
         <>
           <View style={styles.iconHeader}>
@@ -166,8 +250,8 @@ export default function Step4Documents({ onUpdate, onNext, onBack }: Props) {
             </View>
             <Text style={styles.title}>Enter OTP</Text>
             <Text style={styles.subtitle}>
-              OTP sent to the mobile linked with Aadhaar{'\n'}
-              <Text style={styles.highlighted}>{maskedAadhaar}</Text>
+              A 6-digit OTP has been sent to the mobile number linked with Aadhaar ending in{' '}
+              <Text style={styles.highlighted}>XXXX-XXXX-{otpSentTo}</Text>
             </Text>
           </View>
 
@@ -175,58 +259,66 @@ export default function Step4Documents({ onUpdate, onNext, onBack }: Props) {
             <Text style={styles.label}>6-Digit OTP <Text style={styles.required}>*</Text></Text>
             <TextInput
               style={styles.otpInput}
-              placeholder="——————"
+              placeholder="• • • • • •"
               placeholderTextColor={Colors.border}
               value={otp}
               onChangeText={v => setOtp(v.replace(/[^0-9]/g, '').slice(0, 6))}
               keyboardType="number-pad"
               maxLength={6}
               textAlign="center"
+              autoFocus
             />
-          </View>
-
-          <View style={styles.sandboxBox}>
-            <Ionicons name="flask-outline" size={16} color="#7C3AED" />
-            <Text style={styles.sandboxText}>
-              Sandbox OTP is always <Text style={{ fontWeight: '800' }}>123456</Text>
-            </Text>
           </View>
 
           <TouchableOpacity
             style={[styles.primaryBtn, (otp.length !== 6 || loading) && styles.btnDisabled]}
             disabled={otp.length !== 6 || loading}
-            onPress={handleVerifyOtp}>
+            onPress={handleVerifyOtp}
+          >
             {loading
-              ? <ActivityIndicator color={Colors.white} />
-              : <>
+              ? (
+                <View style={styles.loadingRow}>
+                  <ActivityIndicator color={Colors.white} />
+                  <Text style={styles.primaryBtnText}>{loadingMsg || 'Verifying…'}</Text>
+                </View>
+              )
+              : (
+                <>
                   <Ionicons name="checkmark-circle" size={18} color={Colors.white} />
                   <Text style={styles.primaryBtnText}>Verify OTP</Text>
-                </>}
+                </>
+              )}
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.textBtn} onPress={() => { setOtp(''); setSubstate('enterNumber'); }}>
+          <TouchableOpacity style={styles.textBtn} onPress={handleResendOtp} disabled={loading}>
             <Text style={styles.textBtnText}>Didn't receive OTP? Go back and resend</Text>
           </TouchableOpacity>
         </>
       )}
 
-      {/* ── Face verification ────────────────────────────────── */}
-      {substate === 'takeSelfie' && (
+      {/* ── Face verification ─────────────────────────────────────────────────── */}
+      {(substate === 'takeSelfie' || substate === 'verifyingFace') && (
         <>
           <View style={styles.iconHeader}>
             <View style={[styles.iconWrap, { backgroundColor: '#D1FAE5' }]}>
               <Ionicons name="checkmark-circle" size={32} color={Colors.accent} />
             </View>
-            <Text style={styles.successLabel}>Aadhaar verified!</Text>
+            <Text style={styles.successLabel}>Aadhaar Verified!</Text>
 
             <View style={[styles.iconWrap, { marginTop: 20 }]}>
               <Ionicons name="camera-outline" size={36} color={Colors.primary} />
             </View>
             <Text style={styles.title}>Face Verification</Text>
             <Text style={styles.subtitle}>
-              Take a clear front-facing selfie in good lighting.
-              Your face will be matched against Aadhaar records.
+              Take a clear front-facing selfie. Your face will be matched against
+              your Aadhaar photograph.
             </Text>
+          </View>
+
+          <View style={styles.selfieGuideRow}>
+            <SelfieGuideItem icon="sunny-outline"     text="Good lighting" />
+            <SelfieGuideItem icon="glasses-outline"   text="No glasses" />
+            <SelfieGuideItem icon="eye-outline"       text="Look straight" />
           </View>
 
           {selfieUri ? (
@@ -236,25 +328,28 @@ export default function Step4Documents({ onUpdate, onNext, onBack }: Props) {
           ) : null}
 
           <TouchableOpacity
-            style={[styles.primaryBtn, loading && styles.btnDisabled]}
-            disabled={loading}
-            onPress={handleCaptureSelfieAndVerify}>
+            style={[styles.primaryBtn, (loading || substate === 'verifyingFace') && styles.btnDisabled]}
+            disabled={loading || substate === 'verifyingFace'}
+            onPress={handleCaptureSelfieAndVerify}
+          >
             {loading
-              ? <ActivityIndicator color={Colors.white} />
-              : <>
+              ? (
+                <View style={styles.loadingRow}>
+                  <ActivityIndicator color={Colors.white} />
+                  <Text style={styles.primaryBtnText}>{loadingMsg || 'Processing…'}</Text>
+                </View>
+              )
+              : (
+                <>
                   <Ionicons name="camera" size={18} color={Colors.white} />
                   <Text style={styles.primaryBtnText}>Take Selfie & Verify</Text>
-                </>}
+                </>
+              )}
           </TouchableOpacity>
-
-          <View style={styles.sandboxBox}>
-            <Ionicons name="flask-outline" size={16} color="#7C3AED" />
-            <Text style={styles.sandboxText}>Sandbox mode — any selfie passes face verification</Text>
-          </View>
         </>
       )}
 
-      {/* ── Done ─────────────────────────────────────────────── */}
+      {/* ── Done ─────────────────────────────────────────────────────────────── */}
       {substate === 'done' && (
         <>
           <View style={styles.doneContainer}>
@@ -264,6 +359,7 @@ export default function Step4Documents({ onUpdate, onNext, onBack }: Props) {
             <Text style={styles.doneTitle}>Identity Verified!</Text>
             <Text style={styles.doneSub}>
               Both Aadhaar and face verification passed successfully.
+              Your profile will be reviewed shortly.
             </Text>
 
             {selfieUri ? (
@@ -292,6 +388,17 @@ export default function Step4Documents({ onUpdate, onNext, onBack }: Props) {
   );
 }
 
+function SelfieGuideItem({ icon, text }: { icon: any; text: string }) {
+  return (
+    <View style={styles.guideItem}>
+      <View style={styles.guideIconWrap}>
+        <Ionicons name={icon} size={20} color={Colors.primary} />
+      </View>
+      <Text style={styles.guideText}>{text}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container:       { flex: 1, backgroundColor: Colors.background },
   inner:           { padding: 20, paddingBottom: 40 },
@@ -316,8 +423,15 @@ const styles = StyleSheet.create({
     fontSize: 30, fontWeight: '800', color: Colors.primary, paddingVertical: 18, letterSpacing: 14,
   },
 
-  sandboxBox:      { flexDirection: 'row', alignItems: 'flex-start', gap: 8, backgroundColor: '#F5F3FF', borderRadius: 12, padding: 12, marginBottom: 20, borderWidth: 1, borderColor: '#DDD6FE' },
-  sandboxText:     { flex: 1, fontSize: 12, color: '#6D28D9', lineHeight: 18 },
+  infoBox:         { flexDirection: 'row', alignItems: 'flex-start', gap: 8, backgroundColor: '#EFF6FF', borderRadius: 12, padding: 12, marginBottom: 20, borderWidth: 1, borderColor: '#BFDBFE' },
+  infoText:        { flex: 1, fontSize: 12, color: '#1D4ED8', lineHeight: 18 },
+
+  loadingRow:      { flexDirection: 'row', alignItems: 'center', gap: 10 },
+
+  selfieGuideRow:  { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 24 },
+  guideItem:       { alignItems: 'center', gap: 6 },
+  guideIconWrap:   { width: 48, height: 48, borderRadius: 14, backgroundColor: '#FFF3EE', alignItems: 'center', justifyContent: 'center' },
+  guideText:       { fontSize: 11, color: Colors.textMuted, fontWeight: '600', textAlign: 'center' },
 
   primaryBtn:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 16, borderRadius: 16, backgroundColor: Colors.primary, marginBottom: 12, shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
   btnDisabled:     { opacity: 0.5, shadowOpacity: 0, elevation: 0 },

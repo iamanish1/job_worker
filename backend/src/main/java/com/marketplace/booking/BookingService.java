@@ -288,7 +288,7 @@ public class BookingService {
     }
 
     private String generateOtp() {
-        return String.format("%06d", new Random().nextInt(999999));
+        return String.format("%06d", new java.security.SecureRandom().nextInt(1000000));
     }
 
     private String hashOtp(String otp) {
