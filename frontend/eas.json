@@ -22,9 +22,6 @@
       }
     }
   },
-  "update": {
-    "channel": "production"
-  },
   "submit": {
     "production": {
       "android": {

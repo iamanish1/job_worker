@@ -29,13 +29,14 @@
       "package": "com.kaamwala.app",
       "softwareKeyboardLayoutMode": "adjustResize",
       "permissions": [
-        "CAMERA",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE",
-        "RECEIVE_BOOT_COMPLETED",
-        "VIBRATE",
-        "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION"
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.VIBRATE",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
@@ -66,23 +67,24 @@
       "enabled": true,
       "checkAutomatically": "ON_LOAD",
       "fallbackToCacheTimeout": 0,
-      "url": "https://u.expo.dev/YOUR_EAS_PROJECT_ID"
+      "url": ""
     },
     "runtimeVersion": {
       "policy": "appVersion"
     },
     "extra": {
       "firebase": {
-        "apiKey":            "AIzaSyDZCp2SPe6ASyS4QJbA_XYQtR1hK_5MXjk",
-        "authDomain":        "job-worker-3fa01.firebaseapp.com",
-        "projectId":         "job-worker-3fa01",
-        "storageBucket":     "job-worker-3fa01.firebasestorage.app",
+        "apiKey": "AIzaSyDZCp2SPe6ASyS4QJbA_XYQtR1hK_5MXjk",
+        "authDomain": "job-worker-3fa01.firebaseapp.com",
+        "projectId": "job-worker-3fa01",
+        "storageBucket": "job-worker-3fa01.firebasestorage.app",
         "messagingSenderId": "325881977196",
-        "appId":             "1:325881977196:android:9955c8ee89c25efdee3b49"
+        "appId": "1:325881977196:android:9955c8ee89c25efdee3b49"
       },
       "eas": {
-        "projectId": "YOUR_EAS_PROJECT_ID"
+        "projectId": "2188a74e-25a6-40b8-b59d-30c73efedf1e"
       }
-    }
+    },
+    "owner": "iamanish"
   }
 }
