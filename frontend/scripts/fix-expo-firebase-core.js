@@ -11,6 +11,53 @@ const buildGradleFile = path.join(__dirname, '..', 'node_modules', 'expo-firebas
 const packageFile = path.join(__dirname, '..', 'node_modules', 'expo-firebase-core', 'android', 'src', 'main', 'java', 'expo', 'modules', 'firebase', 'core', 'FirebaseCorePackage.java');
 const moduleFile = path.join(__dirname, '..', 'node_modules', 'expo-firebase-core', 'android', 'src', 'main', 'java', 'expo', 'modules', 'firebase', 'core', 'FirebaseCoreModule.java');
 
+const PACKAGE_FILE_CONTENT = `package expo.modules.firebase.core;
+
+import android.content.Context;
+
+import java.util.Collections;
+import java.util.List;
+
+import expo.modules.core.BasePackage;
+import expo.modules.core.interfaces.InternalModule;
+
+public class FirebaseCorePackage extends BasePackage {
+  @Override
+  public List<InternalModule> createInternalModules(Context context) {
+    return Collections.singletonList((InternalModule) new FirebaseCoreService(context));
+  }
+}
+`;
+
+const MODULE_FILE_CONTENT = `package expo.modules.firebase.core;
+
+import android.content.Context;
+
+import java.util.Collections;
+import java.util.List;
+
+import expo.modules.core.interfaces.InternalModule;
+import expo.modules.core.ModuleRegistry;
+
+public class FirebaseCoreModule implements InternalModule {
+  private ModuleRegistry mModuleRegistry;
+
+  public FirebaseCoreModule(Context context) {
+    // Constructor
+  }
+
+  @Override
+  public List<? extends Class> getExportedInterfaces() {
+    return Collections.emptyList();
+  }
+
+  @Override
+  public void onCreate(ModuleRegistry moduleRegistry) {
+    mModuleRegistry = moduleRegistry;
+  }
+}
+`;
+
 if (fs.existsSync(buildGradleFile)) {
   let content = fs.readFileSync(buildGradleFile, 'utf8');
 
@@ -26,49 +73,15 @@ if (fs.existsSync(buildGradleFile)) {
 }
 
 if (fs.existsSync(packageFile)) {
-  let content = fs.readFileSync(packageFile, 'utf8');
-
-  // Remove import ExportedModule
-  content = content.replace(/import expo\.modules\.core\.ExportedModule;\n/, '');
-
-  // Remove the createExportedModules method
-  const exportedMethodRegex = /\s+@Override\s+public List<ExportedModule> createExportedModules\(Context context\) \{\s+return Collections\.singletonList\(\(ExportedModule\) new FirebaseCoreModule\(context\)\);\s+\}\n/;
-  content = content.replace(exportedMethodRegex, '');
-
-  fs.writeFileSync(packageFile, content, 'utf8');
-  console.log('[fix-expo-firebase-core] Fixed FirebaseCorePackage.java: removed ExportedModule usage');
+  fs.writeFileSync(packageFile, PACKAGE_FILE_CONTENT, 'utf8');
+  console.log('[fix-expo-firebase-core] Rewrote FirebaseCorePackage.java with InternalModule implementation');
 } else {
   console.log('[fix-expo-firebase-core] FirebaseCorePackage.java not found.');
 }
 
 if (fs.existsSync(moduleFile)) {
-  let content = fs.readFileSync(moduleFile, 'utf8');
-
-  // Change import
-  content = content.replace(/import expo\.modules\.core\.ExportedModule;/, 'import expo.modules.core.interfaces.InternalModule;');
-
-  // Add Collections import
-  content = content.replace(/import java\.util\.HashMap;/, 'import java.util.Collections;\nimport java.util.HashMap;');
-
-  // Change class declaration
-  content = content.replace(/public class FirebaseCoreModule extends ExportedModule \{/, 'public class FirebaseCoreModule implements InternalModule {');
-
-  // Remove super(context)
-  content = content.replace(/\s+super\(context\);\n/, '');
-
-  // Remove getConstants method
-  const constantsRegex = /\s+@Nullable\s+public Map<String, Object> getConstants\(\) \{[\s\S]*?\n\s+\}\n/;
-  content = content.replace(constantsRegex, '');
-
-  // Remove getName method
-  const nameRegex = /\s+@Override\s+public String getName\(\) \{\s+return NAME;\s+\}\n/;
-  content = content.replace(nameRegex, '');
-
-  // Add getExportedInterfaces method
-  content = content.replace(/(\s+)@Override\s+public void onCreate\(ModuleRegistry moduleRegistry\) \{\s+mModuleRegistry = moduleRegistry;\s+\}\s+\}/, '$1@Override\n$1public List<? extends Class> getExportedInterfaces() {\n$1  return Collections.emptyList();\n$1}\n\n$1@Override\n$1public void onCreate(ModuleRegistry moduleRegistry) {\n$1  mModuleRegistry = moduleRegistry;\n$1}\n}');
-
-  fs.writeFileSync(moduleFile, content, 'utf8');
-  console.log('[fix-expo-firebase-core] Fixed FirebaseCoreModule.java: changed to InternalModule');
+  fs.writeFileSync(moduleFile, MODULE_FILE_CONTENT, 'utf8');
+  console.log('[fix-expo-firebase-core] Rewrote FirebaseCoreModule.java with InternalModule implementation');
 } else {
   console.log('[fix-expo-firebase-core] FirebaseCoreModule.java not found.');
 }

@@ -109,10 +109,5 @@ index 25ca450..7f94251 100644
    public List<InternalModule> createInternalModules(Context context) {
      return Collections.singletonList((InternalModule) new FirebaseCoreService(context));
 -  }
--
--  @Override
--  public List<ExportedModule> createExportedModules(Context context) {
--    return Collections.singletonList((ExportedModule) new FirebaseCoreModule(context));
--  }
--}
-+  }}
++  }
++}
