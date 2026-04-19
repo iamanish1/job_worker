@@ -11,3 +11,108 @@ index 9bda09b..65b951d 100644
    from android.sourceSets.main.java.srcDirs
  }
  
+diff --git a/node_modules/expo-firebase-core/android/src/main/java/expo/modules/firebase/core/FirebaseCoreModule.java b/node_modules/expo-firebase-core/android/src/main/java/expo/modules/firebase/core/FirebaseCoreModule.java
+index 0bb4e53..9528d6a 100644
+--- a/node_modules/expo-firebase-core/android/src/main/java/expo/modules/firebase/core/FirebaseCoreModule.java
++++ b/node_modules/expo-firebase-core/android/src/main/java/expo/modules/firebase/core/FirebaseCoreModule.java
+@@ -4,55 +4,45 @@ package expo.modules.firebase.core;
+ 
+ import android.content.Context;
+ 
+-import androidx.annotation.Nullable;
++import java.util.Collections;
++import java.util.List;
+ 
+-import java.util.Map;
+-import java.util.HashMap;
+-
+-import com.google.firebase.FirebaseApp;
+-import com.google.firebase.FirebaseOptions;
+-
+-import expo.modules.core.ExportedModule;
++import expo.modules.core.interfaces.InternalModule;
+ import expo.modules.core.ModuleRegistry;
+ 
+-public class FirebaseCoreModule extends ExportedModule {
+-  private static final String NAME = "ExpoFirebaseCore";
+-  private static final String DEFAULT_APP_NAME = "[DEFAULT]";
+-
++public class FirebaseCoreModule implements InternalModule {
+   private ModuleRegistry mModuleRegistry;
+-  private Map<String, String> mDefaultOptions;
+ 
+   public FirebaseCoreModule(Context context) {
+-    super(context);
++    // Constructor
+   }
+ 
+-  @Nullable
+-  public Map<String, Object> getConstants() {
+-    FirebaseCoreInterface firebaseCore = mModuleRegistry.getModule(FirebaseCoreInterface.class);
+-    FirebaseApp defaultApp = firebaseCore.getDefaultApp();
++  @Override
++  public List<? extends Class> getExportedInterfaces() {
++    return Collections.emptyList();
++  }
+ 
+-    final Map<String, Object> constants = new HashMap<>();
+-    constants.put("DEFAULT_APP_NAME", (defaultApp != null) ? defaultApp.getName() : DEFAULT_APP_NAME);
++  @Override
+ 
+-    if (mDefaultOptions == null) {
+-      FirebaseOptions options = (defaultApp != null) ? defaultApp.getOptions() : null;
+-      mDefaultOptions = FirebaseCoreOptions.toJSON(options);
+-    }
+ 
+-    if (mDefaultOptions != null) {
+-      constants.put("DEFAULT_APP_OPTIONS", mDefaultOptions);
+-    }
++  public List<? extends Class> getExportedInterfaces() {
++
++
++    return Collections.emptyList();
+ 
+-    return constants;
+-  }
+ 
+-  @Override
+-  public String getName() {
+-    return NAME;
+   }
+ 
++
++
+   @Override
++
++
+   public void onCreate(ModuleRegistry moduleRegistry) {
++
++
+     mModuleRegistry = moduleRegistry;
++
++
+   }
+ }
+diff --git a/node_modules/expo-firebase-core/android/src/main/java/expo/modules/firebase/core/FirebaseCorePackage.java b/node_modules/expo-firebase-core/android/src/main/java/expo/modules/firebase/core/FirebaseCorePackage.java
+index 25ca450..7f94251 100644
+--- a/node_modules/expo-firebase-core/android/src/main/java/expo/modules/firebase/core/FirebaseCorePackage.java
++++ b/node_modules/expo-firebase-core/android/src/main/java/expo/modules/firebase/core/FirebaseCorePackage.java
+@@ -6,17 +6,10 @@ import java.util.Collections;
+ import java.util.List;
+ 
+ import expo.modules.core.BasePackage;
+-import expo.modules.core.ExportedModule;
+ import expo.modules.core.interfaces.InternalModule;
+ 
+ public class FirebaseCorePackage extends BasePackage {
+   @Override
+   public List<InternalModule> createInternalModules(Context context) {
+     return Collections.singletonList((InternalModule) new FirebaseCoreService(context));
+-  }
+-
+-  @Override
+-  public List<ExportedModule> createExportedModules(Context context) {
+-    return Collections.singletonList((ExportedModule) new FirebaseCoreModule(context));
+-  }
+-}
++  }}
