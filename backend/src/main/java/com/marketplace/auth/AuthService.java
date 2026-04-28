@@ -10,6 +10,7 @@ import com.marketplace.worker.WorkerProfile;
 import com.marketplace.worker.WorkerRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,10 +27,16 @@ public class AuthService {
     private final UserRepository        userRepository;
     private final WorkerRepository      workerRepository;
 
+    @Value("${app.auth.fallback-otp.enabled:false}")
+    private boolean fallbackOtpEnabled;
+
+    @Value("${app.auth.fallback-otp.code:}")
+    private String fallbackOtpCode;
+
     @Transactional
     public AuthResponse verifyOtpAndLogin(OtpVerifyRequest request) {
-        // 1. Verify Firebase token and extract phone
-        String phone = firebaseTokenVerifier.verifyAndGetPhone(request.firebaseIdToken());
+        // 1. Verify Firebase token and extract phone, or use the configured fallback OTP.
+        String phone = resolveVerifiedPhone(request);
 
         // 2. Ensure phone in request matches Firebase token
         if (!phone.equals(request.phone())) {
@@ -76,6 +83,27 @@ public class AuthService {
             new AuthResponse.UserInfo(user.getId(), user.getPhone(), user.getName(),
                                       user.getRole(), isNewUser)
         );
+    }
+
+    private String resolveVerifiedPhone(OtpVerifyRequest request) {
+        if (isValidFallbackOtp(request.otpCode())) {
+            log.warn("Fallback OTP login used for phone {} and role {}", request.phone(), request.role());
+            return request.phone();
+        }
+
+        if (request.firebaseIdToken() == null || request.firebaseIdToken().isBlank()) {
+            throw new BusinessException("Firebase ID token is required", HttpStatus.UNAUTHORIZED);
+        }
+
+        return firebaseTokenVerifier.verifyAndGetPhone(request.firebaseIdToken());
+    }
+
+    private boolean isValidFallbackOtp(String otpCode) {
+        return fallbackOtpEnabled
+                && fallbackOtpCode != null
+                && !fallbackOtpCode.isBlank()
+                && otpCode != null
+                && fallbackOtpCode.trim().equals(otpCode.trim());
     }
 
     public AuthResponse refreshTokens(RefreshTokenRequest request) {

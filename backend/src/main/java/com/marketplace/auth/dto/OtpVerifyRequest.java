@@ -8,8 +8,10 @@ public record OtpVerifyRequest(
     @Pattern(regexp = "^\\+91[6-9]\\d{9}$", message = "Invalid Indian phone number (format: +91XXXXXXXXXX)")
     String phone,
 
-    @NotBlank(message = "Firebase ID token is required")
     String firebaseIdToken,
+
+    @Pattern(regexp = "^\\d{5,6}$", message = "OTP must be a 5 or 6-digit number")
+    String otpCode,
 
     @NotBlank(message = "Role is required")
     @Pattern(regexp = "^(CUSTOMER|WORKER)$", message = "Role must be CUSTOMER or WORKER")

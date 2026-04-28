@@ -14,6 +14,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -37,6 +38,12 @@ class AuthServiceTest {
     private static final String ACCESS_TOKEN   = "access.token.here";
     private static final String REFRESH_TOKEN  = "refresh.token.here";
 
+    @BeforeEach
+    void setUp() {
+        ReflectionTestUtils.setField(authService, "fallbackOtpEnabled", false);
+        ReflectionTestUtils.setField(authService, "fallbackOtpCode", "98737");
+    }
+
     private void stubJwtGeneration() {
         when(jwtService.generateAccessToken(any(), any())).thenReturn(ACCESS_TOKEN);
         when(jwtService.generateRefreshToken(any(), any())).thenReturn(REFRESH_TOKEN);
@@ -53,7 +60,7 @@ class AuthServiceTest {
         User saved = User.builder().id(UUID.randomUUID()).phone(PHONE).role("CUSTOMER").build();
         when(userRepository.save(any(User.class))).thenReturn(saved);
 
-        OtpVerifyRequest req = new OtpVerifyRequest(PHONE, FIREBASE_TOKEN, "CUSTOMER");
+        OtpVerifyRequest req = new OtpVerifyRequest(PHONE, FIREBASE_TOKEN, null, "CUSTOMER");
         AuthResponse resp = authService.verifyOtpAndLogin(req);
 
         assertThat(resp.accessToken()).isEqualTo(ACCESS_TOKEN);
@@ -73,7 +80,7 @@ class AuthServiceTest {
         when(userRepository.save(any(User.class))).thenReturn(saved);
         when(workerRepository.findByUserId(userId)).thenReturn(Optional.empty());
 
-        OtpVerifyRequest req = new OtpVerifyRequest(PHONE, FIREBASE_TOKEN, "WORKER");
+        OtpVerifyRequest req = new OtpVerifyRequest(PHONE, FIREBASE_TOKEN, null, "WORKER");
         authService.verifyOtpAndLogin(req);
 
         verify(workerRepository).save(any(WorkerProfile.class));
@@ -89,7 +96,7 @@ class AuthServiceTest {
         when(userRepository.findByPhone(PHONE)).thenReturn(Optional.of(existing));
         when(userRepository.save(any(User.class))).thenReturn(existing);
 
-        OtpVerifyRequest req = new OtpVerifyRequest(PHONE, FIREBASE_TOKEN, "CUSTOMER");
+        OtpVerifyRequest req = new OtpVerifyRequest(PHONE, FIREBASE_TOKEN, null, "CUSTOMER");
         AuthResponse resp = authService.verifyOtpAndLogin(req);
 
         assertThat(resp.user().isNewUser()).isFalse();
@@ -101,11 +108,38 @@ class AuthServiceTest {
     void phoneMismatch_throwsUnauthorized() {
         when(firebaseTokenVerifier.verifyAndGetPhone(FIREBASE_TOKEN)).thenReturn("+919999999999");
 
-        OtpVerifyRequest req = new OtpVerifyRequest(PHONE, FIREBASE_TOKEN, "CUSTOMER");
+        OtpVerifyRequest req = new OtpVerifyRequest(PHONE, FIREBASE_TOKEN, null, "CUSTOMER");
 
         assertThatThrownBy(() -> authService.verifyOtpAndLogin(req))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("mismatch");
+    }
+
+    @Test
+    void fallbackOtp_enabled_logsInWithoutFirebaseToken() {
+        ReflectionTestUtils.setField(authService, "fallbackOtpEnabled", true);
+        stubJwtGeneration();
+        UUID userId = UUID.randomUUID();
+        User existing = User.builder().id(userId).phone(PHONE).role("CUSTOMER").build();
+
+        when(userRepository.findByPhone(PHONE)).thenReturn(Optional.of(existing));
+        when(userRepository.save(any(User.class))).thenReturn(existing);
+
+        OtpVerifyRequest req = new OtpVerifyRequest(PHONE, "", "98737", "CUSTOMER");
+        AuthResponse resp = authService.verifyOtpAndLogin(req);
+
+        assertThat(resp.accessToken()).isEqualTo(ACCESS_TOKEN);
+        assertThat(resp.user().phone()).isEqualTo(PHONE);
+        verifyNoInteractions(firebaseTokenVerifier);
+    }
+
+    @Test
+    void fallbackOtp_disabledWithoutFirebaseToken_throwsUnauthorized() {
+        OtpVerifyRequest req = new OtpVerifyRequest(PHONE, "", "98737", "CUSTOMER");
+
+        assertThatThrownBy(() -> authService.verifyOtpAndLogin(req))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("Firebase ID token is required");
     }
 
     // ── ROLE SWITCHING ───────────────────────────────────────────────────────────
@@ -121,7 +155,7 @@ class AuthServiceTest {
         when(userRepository.save(any(User.class))).thenReturn(existing);
         when(workerRepository.findByUserId(userId)).thenReturn(Optional.empty());
 
-        OtpVerifyRequest req = new OtpVerifyRequest(PHONE, FIREBASE_TOKEN, "WORKER");
+        OtpVerifyRequest req = new OtpVerifyRequest(PHONE, FIREBASE_TOKEN, null, "WORKER");
         AuthResponse resp = authService.verifyOtpAndLogin(req);
 
         assertThat(resp.accessToken()).isEqualTo(ACCESS_TOKEN);
@@ -138,7 +172,7 @@ class AuthServiceTest {
         when(userRepository.findByPhone(PHONE)).thenReturn(Optional.of(existing));
 
         // Construct request with role=ADMIN (bypassing DTO validation at this unit level)
-        OtpVerifyRequest req = new OtpVerifyRequest(PHONE, FIREBASE_TOKEN, "ADMIN");
+        OtpVerifyRequest req = new OtpVerifyRequest(PHONE, FIREBASE_TOKEN, null, "ADMIN");
 
         assertThatThrownBy(() -> authService.verifyOtpAndLogin(req))
                 .isInstanceOf(BusinessException.class)

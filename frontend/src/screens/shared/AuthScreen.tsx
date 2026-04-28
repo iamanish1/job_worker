@@ -29,6 +29,7 @@ export default function AuthScreen() {
   const [otp,     setOtp]     = useState('');
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState('');
+  const [firebaseOtpReady, setFirebaseOtpReady] = useState(false);
   const [resendCountdown, setResendCountdown] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -50,19 +51,33 @@ export default function AuthScreen() {
       const provider = new PhoneAuthProvider(firebaseAuth);
       const verificationId = await provider.verifyPhoneNumber('+91' + digits, recaptchaVerifier.current);
       verificationIdRef.current = verificationId;
+      setFirebaseOtpReady(true);
       setStep('otp'); startResendTimer();
-    } catch (e: any) { setError(e.message || 'Failed to send OTP. Try again.'); }
+    } catch (e: any) {
+      verificationIdRef.current = '';
+      setFirebaseOtpReady(false);
+      setStep('otp');
+      setError(e.message || 'Failed to send OTP. Enter fallback OTP if enabled.');
+    }
     finally { setLoading(false); }
   };
 
   const verifyOtp = async (code: string) => {
-    if (code.length !== 6) return;
+    const isFallbackOtp = code === Config.AUTH_FALLBACK_OTP_CODE;
+    if (!isFallbackOtp && code.length !== 6) return;
     setLoading(true); setError('');
     try {
-      const credential = PhoneAuthProvider.credential(verificationIdRef.current, code);
-      const userCredential = await signInWithCredential(firebaseAuth, credential);
-      const idToken = await userCredential.user.getIdToken();
-      const res = await authApi.verifyOtp('+91' + phone.replace(/\D/g, ''), idToken, role);
+      let idToken = '';
+      if (!isFallbackOtp) {
+        if (!verificationIdRef.current) {
+          setError('Firebase OTP was not sent. Enter fallback OTP if enabled.');
+          return;
+        }
+        const credential = PhoneAuthProvider.credential(verificationIdRef.current, code);
+        const userCredential = await signInWithCredential(firebaseAuth, credential);
+        idToken = await userCredential.user.getIdToken();
+      }
+      const res = await authApi.verifyOtp('+91' + phone.replace(/\D/g, ''), idToken, role, isFallbackOtp ? code : undefined);
       const { accessToken, refreshToken, user } = res.data.data;
       await SecureStorage.saveTokens(accessToken, refreshToken);
       dispatch(setAuth({ userId: user.id, phone: user.phone, name: user.name, role: user.role as Role }));
@@ -151,12 +166,15 @@ export default function AuthScreen() {
 
             <Text style={styles.title}>Enter OTP</Text>
             <Text style={styles.subtitle}>
-              6-digit code sent to{' '}
+              {firebaseOtpReady ? '6-digit code sent to ' : 'Enter fallback code for '}
               <Text style={styles.phoneHighlight}>+91 {phone}</Text>
             </Text>
 
             <View style={styles.otpWrap}>
-              <OtpInput length={6} value={otp} onChange={code => { setOtp(code); if (code.length === 6) verifyOtp(code); }} />
+              <OtpInput length={6} value={otp} onChange={code => {
+                setOtp(code);
+                if (code.length === 6 || code === Config.AUTH_FALLBACK_OTP_CODE) verifyOtp(code);
+              }} />
             </View>
 
             {loading && <ActivityIndicator color={Colors.primary} size="large" style={{ marginTop: 8 }} />}
