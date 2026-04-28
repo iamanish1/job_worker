@@ -64,7 +64,11 @@ export default function AuthScreen() {
 
   const verifyOtp = async (code: string) => {
     const isFallbackOtp = code === Config.AUTH_FALLBACK_OTP_CODE;
-    if (!isFallbackOtp && code.length !== 6) return;
+    if (code.length !== 6) return;
+    if (!isFallbackOtp && !firebaseOtpReady) {
+      setError('Enter the complete fallback OTP.');
+      return;
+    }
     setLoading(true); setError('');
     try {
       let idToken = '';
@@ -173,7 +177,9 @@ export default function AuthScreen() {
             <View style={styles.otpWrap}>
               <OtpInput length={6} value={otp} onChange={code => {
                 setOtp(code);
-                if (code.length === 6 || code === Config.AUTH_FALLBACK_OTP_CODE) verifyOtp(code);
+                if (code.length === 6 && (firebaseOtpReady || code === Config.AUTH_FALLBACK_OTP_CODE)) {
+                  verifyOtp(code);
+                }
               }} />
             </View>
 
