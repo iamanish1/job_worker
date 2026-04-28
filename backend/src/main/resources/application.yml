@@ -50,7 +50,7 @@ app:
   auth:
     fallback-otp:
       enabled: ${AUTH_FALLBACK_OTP_ENABLED:false}
-      code: ${AUTH_FALLBACK_OTP_CODE:98737}
+      code: ${AUTH_FALLBACK_OTP_CODE:987371}
 
   aws:
     region: ${AWS_REGION:ap-south-1}

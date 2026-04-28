@@ -41,7 +41,7 @@ class AuthServiceTest {
     @BeforeEach
     void setUp() {
         ReflectionTestUtils.setField(authService, "fallbackOtpEnabled", false);
-        ReflectionTestUtils.setField(authService, "fallbackOtpCode", "98737");
+        ReflectionTestUtils.setField(authService, "fallbackOtpCode", "987371");
     }
 
     private void stubJwtGeneration() {
@@ -125,7 +125,7 @@ class AuthServiceTest {
         when(userRepository.findByPhone(PHONE)).thenReturn(Optional.of(existing));
         when(userRepository.save(any(User.class))).thenReturn(existing);
 
-        OtpVerifyRequest req = new OtpVerifyRequest(PHONE, "", "98737", "CUSTOMER");
+        OtpVerifyRequest req = new OtpVerifyRequest(PHONE, "", "987371", "CUSTOMER");
         AuthResponse resp = authService.verifyOtpAndLogin(req);
 
         assertThat(resp.accessToken()).isEqualTo(ACCESS_TOKEN);
@@ -135,7 +135,7 @@ class AuthServiceTest {
 
     @Test
     void fallbackOtp_disabledWithoutFirebaseToken_throwsUnauthorized() {
-        OtpVerifyRequest req = new OtpVerifyRequest(PHONE, "", "98737", "CUSTOMER");
+        OtpVerifyRequest req = new OtpVerifyRequest(PHONE, "", "987371", "CUSTOMER");
 
         assertThatThrownBy(() -> authService.verifyOtpAndLogin(req))
                 .isInstanceOf(BusinessException.class)
