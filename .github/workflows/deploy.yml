@@ -5,7 +5,6 @@ on:
     branches: [main]
 
 jobs:
-  # ── 1. Backend tests ─────────────────────────────────────────────────────────
   backend-test:
     name: Backend Tests
     runs-on: ubuntu-latest
@@ -23,26 +22,9 @@ jobs:
         working-directory: backend
         run: mvn test --no-transfer-progress
 
-  # ── 2. Deploy backend to Railway ─────────────────────────────────────────────
-  deploy-backend:
-    name: Deploy Backend (Railway)
-    needs: backend-test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Railway CLI
-        run: npm install -g @railway/cli
-
-      - name: Deploy to Railway
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: railway up --service kaamwala-api --detach
-
-  # ── 3. Push OTA update to production users ───────────────────────────────────
   ota-update:
     name: Push OTA Update (EAS)
-    needs: deploy-backend
+    needs: backend-test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
