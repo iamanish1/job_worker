@@ -1,6 +1,6 @@
 export const Config = {
   API_BASE_URL:   __DEV__
-    ? 'http://192.168.1.103:8082/api'   // Expo Go on physical device
+    ? 'http://192.168.1.108:8082/api'   // Expo Go on physical device
     : 'https://jobworker-production.up.railway.app/api',   // Production (Railway)
   BOOKING_POLL_INTERVAL_MS: 30_000,   // 30s polling for tracking
   OTP_RESEND_COOLDOWN_S:    30,

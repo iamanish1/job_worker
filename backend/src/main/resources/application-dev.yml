@@ -2,6 +2,12 @@ spring:
   jpa:
     show-sql: true
 
+app:
+  auth:
+    fallback-otp:
+      enabled: true
+      code: "987371"
+
 logging:
   level:
     com.marketplace: DEBUG
