@@ -26,7 +26,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FF6B35"
       },
-      "package": "com.kaamwala.app",
+      "package": "com.devhubs.kaamwala",
       "softwareKeyboardLayoutMode": "adjustResize",
       "permissions": [
         "android.permission.CAMERA",
@@ -67,7 +67,7 @@
       "enabled": true,
       "checkAutomatically": "ON_LOAD",
       "fallbackToCacheTimeout": 0,
-      "url": "https://u.expo.dev/2188a74e-25a6-40b8-b59d-30c73efedf1e"
+      "url": "https://u.expo.dev/e0f0fdc3-c378-4c34-9bcc-877559920bc3"
     },
     "runtimeVersion": {
       "policy": "appVersion"
@@ -82,9 +82,9 @@
         "appId": "1:325881977196:android:9955c8ee89c25efdee3b49"
       },
       "eas": {
-        "projectId": "2188a74e-25a6-40b8-b59d-30c73efedf1e"
+        "projectId": "e0f0fdc3-c378-4c34-9bcc-877559920bc3"
       }
     },
-    "owner": "iamanish"
+    "owner": "devhubs12"
   }
 }

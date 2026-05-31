@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
 
+import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -45,11 +46,12 @@ public class SurepassVerificationService implements VerificationService {
 
     private RestClient restClient;
 
-    /**
-     * Temporary cache: workerId → Aadhaar face photo (base64) returned by Surepass after OTP.
-     * Used during face-match step. Cleared after match or on failure.
-     */
+    private static final long CACHE_TTL_SECONDS = 600; // 10 minutes
+
+    /** workerId → Aadhaar face photo (base64). Cleared after match or TTL expiry. */
     private final Map<UUID, String> aadhaarPhotoCache = new ConcurrentHashMap<>();
+    /** workerId → time the photo was cached, for TTL enforcement. */
+    private final Map<UUID, Instant> aadhaarPhotoCacheTime = new ConcurrentHashMap<>();
 
     @PostConstruct
     void init() {
@@ -127,6 +129,7 @@ public class SurepassVerificationService implements VerificationService {
             Object photo = resp.data().get("photo");
             if (photo instanceof String photoStr && !photoStr.isBlank()) {
                 aadhaarPhotoCache.put(workerId, photoStr);
+                aadhaarPhotoCacheTime.put(workerId, Instant.now());
                 log.debug("Aadhaar photo cached for workerId={}", workerId);
             } else {
                 log.warn("Surepass did not return photo for workerId={}. Face match may not work.", workerId);
@@ -154,9 +157,14 @@ public class SurepassVerificationService implements VerificationService {
         }
 
         String aadhaarPhoto = aadhaarPhotoCache.get(workerId);
-        if (aadhaarPhoto == null) {
+        Instant cachedAt = aadhaarPhotoCacheTime.get(workerId);
+        boolean expired = cachedAt == null ||
+                Instant.now().getEpochSecond() - cachedAt.getEpochSecond() > CACHE_TTL_SECONDS;
+        if (aadhaarPhoto == null || expired) {
+            aadhaarPhotoCache.remove(workerId);
+            aadhaarPhotoCacheTime.remove(workerId);
             throw new BusinessException(
-                "Aadhaar not yet verified or session expired. Please complete Aadhaar OTP verification first.",
+                "Aadhaar session expired. Please complete Aadhaar OTP verification again.",
                 HttpStatus.BAD_REQUEST);
         }
 
@@ -188,8 +196,9 @@ public class SurepassVerificationService implements VerificationService {
         double confidence = extractDouble(resp.data(), "confidence");
         log.info("Face match PASSED for workerId={}, confidence={}", workerId, confidence);
 
-        // Clean up cached photo
+        // Clean up cached photo and TTL entry
         aadhaarPhotoCache.remove(workerId);
+        aadhaarPhotoCacheTime.remove(workerId);
 
         WorkerProfile wp = workerRepository.findByUserId(workerId)
                 .orElseThrow(() -> new NotFoundException("Worker profile not found"));

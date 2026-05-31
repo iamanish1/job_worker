@@ -27,18 +27,23 @@ public class BookingExpiryScheduler {
     @Scheduled(fixedRate = 300_000)
     @Transactional
     public void expireStaleBookings() {
-        Instant cutoff = Instant.now().minus(expiryMinutes, ChronoUnit.MINUTES);
-        List<Booking> stale = bookingRepository.findExpiredPendingBookings(BookingStatus.PENDING, cutoff);
+        try {
+            Instant cutoff = Instant.now().minus(expiryMinutes, ChronoUnit.MINUTES);
+            List<Booking> stale = bookingRepository.findExpiredPendingBookings(BookingStatus.PENDING, cutoff);
 
-        if (stale.isEmpty()) return;
+            if (stale.isEmpty()) return;
 
-        log.info("Expiring {} stale bookings", stale.size());
-        stale.forEach(booking -> {
-            booking.setStatus(BookingStatus.EXPIRED);
-            booking.setCancelledBy("SYSTEM");
-            booking.setCancellationReason("Worker did not respond within " + expiryMinutes + " minutes");
-            bookingRepository.save(booking);
-            notificationService.sendBookingExpired(booking);
-        });
+            log.info("Expiring {} stale bookings", stale.size());
+            stale.forEach(booking -> {
+                booking.setStatus(BookingStatus.EXPIRED);
+                booking.setCancelledBy("SYSTEM");
+                booking.setCancellationReason("Worker did not respond within " + expiryMinutes + " minutes");
+                bookingRepository.save(booking);
+                notificationService.sendBookingExpired(booking);
+            });
+        } catch (Exception e) {
+            // Catch all so Spring does not disable this scheduled task on failure
+            log.error("BookingExpiryScheduler failed — bookings may not be expiring: {}", e.getMessage(), e);
+        }
     }
 }

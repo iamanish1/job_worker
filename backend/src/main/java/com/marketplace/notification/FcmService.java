@@ -32,7 +32,7 @@ public class FcmService {
             String response = FirebaseMessaging.getInstance().send(message);
             log.debug("FCM sent: {}", response);
         } catch (Exception e) {
-            log.warn("FCM push failed for token {}: {}", fcmToken, e.getMessage());
+            log.warn("FCM push failed for token {}****: {}", fcmToken.substring(0, Math.min(10, fcmToken.length())), e.getMessage());
         }
     }
 }

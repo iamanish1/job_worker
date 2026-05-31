@@ -35,8 +35,9 @@ app:
 
 logging:
   level:
-    com.marketplace: INFO
+    com.marketplace: WARN
     org.springframework.security: WARN
     org.hibernate: WARN
+    org.flywaydb: WARN
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

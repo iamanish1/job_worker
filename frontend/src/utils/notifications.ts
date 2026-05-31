@@ -21,7 +21,7 @@ Notifications.setNotificationHandler({
  */
 export async function registerForPushNotifications(): Promise<void> {
   if (!Device.isDevice) {
-    console.log('Push notifications only work on physical devices');
+    if (__DEV__) console.log('Push notifications only work on physical devices');
     return;
   }
 
@@ -34,7 +34,7 @@ export async function registerForPushNotifications(): Promise<void> {
   }
 
   if (finalStatus !== 'granted') {
-    console.log('Push notification permission denied');
+    if (__DEV__) console.log('Push notification permission denied');
     return;
   }
 
@@ -55,8 +55,7 @@ export async function registerForPushNotifications(): Promise<void> {
 
     // Save token to backend so server can send push via FCM
     await userApi.updateProfile({ fcmToken: token });
-    console.log('Push token registered:', token);
   } catch (e) {
-    console.warn('Failed to get push token:', e);
+    if (__DEV__) console.warn('Failed to get push token:', e);
   }
 }
